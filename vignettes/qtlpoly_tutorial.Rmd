@@ -1,0 +1,68 @@
+---
+title: "QTLpoly_concise_tutorial"
+author: "Jeekin Lau"
+date: '2022-05-19'
+output: html_document
+---
+
+For detailed explaination of how to run QTLpoly from the developer go here https://guilherme-pereira.github.io/QTLpoly/1-tutorial or https://guilherme-pereira.github.io/QTLpoly/2-tetraploid_example.html 
+
+# Introduction
+
+After the linkage mapping step, if you have already measured your traits and have a good estimate of the mean for your traits of interest, you can run QTL mapping. BLUEs (Best Linear Unbiased Estimates) (or "smart mean") from mixed models are a good idea instead of arithmetic mean ("dumb mean") as it accounts for other factors in your experiment.    
+      
+After linkage mapping you should have a gentoypic probablity object. If coming from R-package MAPpoly, then you should have an object called genoprob. This is a file that contains information of the genotypic probability of each individual at all the positions of the linkage map.
+If someone else is providing a linkage map for you to run the analysis they will give you the files you need to run QTLpoly.
+
+# Running QTLpoly
+
+To read this object into R run the following lines. 
+```{r eval=FALSE, include=T}
+genoprob<-readRDS("genoprob_file.RDS")
+```
+
+You will also need to read in your phenotype file (file containing the BLUEs for each trait).
+```{r eval=FALSE, include=T}
+pheno<-read.csv("phenotype_file.csv",header=T, row.names = 1)
+```
+
+
+After loading in your genoprob file and your phenotype file, then will create a QTLpoly data object. Recommended to keep the step at 1 as that is how
+```{r eval=FALSE, include=T}
+data <- read_data(ploidy = 4, geno.prob = genoprob, pheno = pheno, step = 1)
+```
+
+
+# Genome wide significances
+Genome wide significances need to be established to figure out if a QTL signal is statistically significant or not. After creating the data object for QTLpoly, we can run some simulations where QTL are simulated for each location in the genome and resampling is done 1,000 times. This is very time consuming and I have already done it for you in the case of the BExMG and SWxBE populations. You can skip this step if y
+
+```{r eval=FALSE, include=T}
+data.sim <- simulate_qtl(data = data, mu = 0, h2.qtl = NULL, var.error = 1,
+                         n.sim = 1000, missing = TRUE, seed = 123)
+score.null <- null_model(data = data.sim$results, n.clusters = 10, plot = NULL)
+min.pvl <- numeric(length(score.null$results))
+for (p in 1:length(score.null$results)) {
+  min.pvl[p] <- score.null$results[[p]]$pval[which.max(score.null$results[[p]]$stat)]
+}
+
+saveRDS(data.sim, "data.sim.RDS")
+saveRDS(min.pvl, "min.pvl.RDS")
+saveRDS(score.null, "score.null.RDS")
+
+
+quantile(sort(min.pvl), c(0.2, 0.05))
+#          20%           5%
+# 0.0020829605 0.0003276568
+```
+
+If the Significances are already estimated load them in using the following lines
+```{r eval=FALSE, include=T}
+data.sim<-readRDS("data.sim.RDS")
+min.pvl<-readRDS("min.pvl.RDS")
+score.null<-readRDS("score.null.RDS")
+```
+
+
+
+
+
